@@ -80,10 +80,9 @@ AD_TEXT = (
 def generate_fake_ip():
     return f"{random.randint(1,255)}.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(1,255)}"
 
-# ---------- NSFW URLS FROM TEXT FILE (fallback to hardcoded) ----------
+# ---------- NSFW URLS FROM TEXT FILE ----------
 NSFW_URLS = []
 try:
-    # Try to read from nsfw.txt in the same directory
     if os.path.exists("nsfw.txt"):
         with open("nsfw.txt", "r") as f:
             lines = [line.strip() for line in f if line.strip()]
@@ -92,16 +91,11 @@ try:
 except:
     pass
 
-# If no file, fallback to a small set of safe-for-work placeholder images (just to avoid errors)
-# But we want NSFW, so we'll keep a small set of public domain NSFW-ish images (actually we can use the API as fallback)
-# We'll combine: try to use URLs from file, else use waifu.pics API.
 def get_nsfw_urls(count=5):
     if NSFW_URLS:
-        # Pick random URLs from the list
         return random.sample(NSFW_URLS, min(count, len(NSFW_URLS)))
     else:
-        # Fallback: use waifu.pics API (may still work)
-        return None  # will be handled in command
+        return None
 
 # ---------- VIEWS ----------
 class RaidView(discord.ui.View):
@@ -125,7 +119,6 @@ class RaidView(discord.ui.View):
             await interaction.followup.send("❌ I can't send messages here.", ephemeral=True)
             return
 
-        # Send the public raid messages
         for _ in range(5):
             if is_dm:
                 await interaction.channel.send(RAID_TEXT)
@@ -136,7 +129,6 @@ class RaidView(discord.ui.View):
                     await interaction.channel.send(RAID_TEXT)
             await asyncio.sleep(0.4)
 
-        # Unique ephemeral confirmation
         embed = discord.Embed(
             title="⬛ RAID EXECUTED",
             description="Your raid was delivered successfully.\nNobody else knows it was you.",
@@ -147,7 +139,6 @@ class RaidView(discord.ui.View):
 
     @discord.ui.button(label="🔄 EXTRA", style=discord.ButtonStyle.secondary, custom_id="extra_button")
     async def extra_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Opens a new ephemeral raid panel
         embed = discord.Embed(
             title="☠️ RAID PANEL",
             description="Use the buttons below.\nThis panel is only visible to you.",
@@ -177,9 +168,7 @@ async def on_ready():
 @bot.tree.command(name="raid", description="[🆓] Open stealth raid panel")
 async def raid(interaction: discord.Interaction):
     if not await blacklist_check(interaction): return
-    # Send trolling ephemeral first
     await interaction.response.send_message(TROLL_MSG, ephemeral=True)
-    # Then send the panel as follow-up (ephemeral)
     embed = discord.Embed(
         title="☠️ RAID PANEL",
         description="Use the buttons below.\nThis panel is only visible to you.",
@@ -253,7 +242,6 @@ async def checkraid(interaction: discord.Interaction):
     msg = await interaction.original_response()
     await asyncio.sleep(1)
     await msg.delete()
-    # Also send ephemeral confirmation
     await interaction.followup.send("✅ Link flashed.", ephemeral=True)
 
 @bot.tree.command(name="ad", description="[🆓] Show Exilon ad")
@@ -262,7 +250,7 @@ async def ad(interaction: discord.Interaction):
     await interaction.response.send_message(TROLL_MSG, ephemeral=True)
     await interaction.followup.send(AD_TEXT)
 
-# ---------- PREMIUM MANAGEMENT (owner only, no trolling needed) ----------
+# ---------- PREMIUM MANAGEMENT (no trolling) ----------
 @bot.tree.command(name="addpremium", description="[🔒] Grant premium (owner only)")
 @app_commands.describe(user="User to grant")
 async def addpremium(interaction: discord.Interaction, user: discord.Member):
@@ -311,7 +299,7 @@ async def unblacklist(interaction: discord.Interaction, user: discord.Member):
     BLACKLIST.remove(user.id)
     await interaction.response.send_message(f"{user.mention} unblacklisted.", ephemeral=False)
 
-# ---------- PREMIUM COMMANDS (with trolling ephemeral) ----------
+# ---------- PREMIUM COMMANDS (with trolling but no defer) ----------
 @bot.tree.command(name="spam", description="[💎] Send custom message multiple times")
 @app_commands.describe(message="Message", total="Times (1-5)")
 async def spam(interaction: discord.Interaction, message: str, total: int):
@@ -322,11 +310,16 @@ async def spam(interaction: discord.Interaction, message: str, total: int):
     if total > 5 or total < 1:
         await interaction.response.send_message("❌ Total 1-5.", ephemeral=True)
         return
+
+    # Send trolling ephemeral
     await interaction.response.send_message(TROLL_MSG, ephemeral=True)
-    await interaction.followup.defer(ephemeral=False)  # we want public messages
+
+    # Send public messages directly via channel.send
     for _ in range(total):
         await interaction.channel.send(message)
         await asyncio.sleep(0.5)
+
+    # Send ephemeral confirmation via followup
     await interaction.followup.send(f"✅ Sent {total} times.", ephemeral=True)
 
 @bot.tree.command(name="nsfw", description="[💎] Send 5 NSFW images")
@@ -337,9 +330,7 @@ async def nsfw(interaction: discord.Interaction):
         return
 
     await interaction.response.send_message(TROLL_MSG, ephemeral=True)
-    await interaction.followup.defer(ephemeral=False)
 
-    # Try to get URLs from file, else use API
     urls = get_nsfw_urls(5)
     if urls:
         for i, url in enumerate(urls):
