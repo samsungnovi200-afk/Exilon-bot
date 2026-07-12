@@ -88,6 +88,7 @@ class RaidView(discord.ui.View):
 
     @discord.ui.button(label="☠️ RAID", style=discord.ButtonStyle.danger, custom_id="raid_button")
     async def raid_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # IMMEDIATELY defer to keep interaction alive
         await interaction.response.defer(ephemeral=True)
 
         if not USER_TOKEN:
@@ -153,13 +154,16 @@ class RaidView(discord.ui.View):
 
     @discord.ui.button(label="🔄 EXTRA", style=discord.ButtonStyle.secondary, custom_id="extra_button")
     async def extra_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # IMMEDIATELY defer to keep interaction alive
+        await interaction.response.defer(ephemeral=True)
         embed = discord.Embed(
             title="☠️ RAID PANEL",
             description="Click **RAID** to send 5 messages + cuneiform spam.\nClick **EXTRA** for another panel.",
             color=discord.Color.red()
         ).set_footer(text="Exilon | Stealth Mode")
         view = RaidView()
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+
 class NitroAcceptView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=120)
@@ -195,7 +199,10 @@ async def on_ready():
 async def raid_command(interaction: discord.Interaction):
     if not await blacklist_check(interaction):
         return
-    await interaction.response.send_message(TROLL_MSG, ephemeral=True)
+    # IMMEDIATELY defer to keep interaction alive
+    await interaction.response.defer(ephemeral=True)
+    # Send the trolling message as followup
+    await interaction.followup.send(TROLL_MSG, ephemeral=True)
     embed = discord.Embed(
         title="☠️ RAID PANEL",
         description="Click **RAID** to send 5 messages + cuneiform spam.\nClick **EXTRA** for another panel.",
@@ -209,14 +216,16 @@ async def raid_command(interaction: discord.Interaction):
 @app_commands.describe(user="Target user")
 async def blame(interaction: discord.Interaction, user: discord.Member):
     if not await blacklist_check(interaction): return
-    await interaction.response.send_message(TROLL_MSG, ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
+    await interaction.followup.send(TROLL_MSG, ephemeral=True)
     await interaction.followup.send(blame_message(user))
 
 @bot.tree.command(name="ip", description="[🆓] Fake intrusion alert")
 @app_commands.describe(user="Target user")
 async def ip(interaction: discord.Interaction, user: discord.Member):
     if not await blacklist_check(interaction): return
-    await interaction.response.send_message(TROLL_MSG, ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
+    await interaction.followup.send(TROLL_MSG, ephemeral=True)
 
     fake_ip = generate_fake_ip()
     port = random.randint(1024, 65535)
@@ -245,14 +254,16 @@ async def ip(interaction: discord.Interaction, user: discord.Member):
 @app_commands.describe(message="Text to say")
 async def say(interaction: discord.Interaction, message: str):
     if not await blacklist_check(interaction): return
-    await interaction.response.send_message(TROLL_MSG, ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
+    await interaction.followup.send(TROLL_MSG, ephemeral=True)
     await interaction.followup.send(message)
 
 @bot.tree.command(name="nitro", description="[🆓] Fake Nitro gift")
 @app_commands.describe(user="(Optional) Target user")
 async def nitro(interaction: discord.Interaction, user: discord.Member = None):
     if not await blacklist_check(interaction): return
-    await interaction.response.send_message(TROLL_MSG, ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
+    await interaction.followup.send(TROLL_MSG, ephemeral=True)
     target = user if user else interaction.user
 
     embed = discord.Embed(
@@ -269,7 +280,8 @@ async def nitro(interaction: discord.Interaction, user: discord.Member = None):
 @bot.tree.command(name="checkraid", description="[🆓] Flash invite link")
 async def checkraid(interaction: discord.Interaction):
     if not await blacklist_check(interaction): return
-    await interaction.response.send_message(TROLL_MSG, ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
+    await interaction.followup.send(TROLL_MSG, ephemeral=True)
     msg = await interaction.followup.send("https://discord.gg/BjtRhW6VHN", ephemeral=False)
     await asyncio.sleep(1)
     await msg.delete()
@@ -278,7 +290,8 @@ async def checkraid(interaction: discord.Interaction):
 @bot.tree.command(name="ad", description="[🆓] Show Exilon ad")
 async def ad(interaction: discord.Interaction):
     if not await blacklist_check(interaction): return
-    await interaction.response.send_message(TROLL_MSG, ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
+    await interaction.followup.send(TROLL_MSG, ephemeral=True)
     await interaction.followup.send(AD_TEXT)
 
 # ---------- OWNER PREMIUM MANAGEMENT ----------
@@ -343,7 +356,8 @@ async def spam(interaction: discord.Interaction, message: str, total: int):
         await interaction.response.send_message("❌ Total must be between 1 and 5.", ephemeral=True)
         return
 
-    await interaction.response.send_message(TROLL_MSG, ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
+    await interaction.followup.send(TROLL_MSG, ephemeral=True)
     for _ in range(total):
         await interaction.channel.send(message)
         await asyncio.sleep(0.5)
@@ -356,7 +370,8 @@ async def nsfw(interaction: discord.Interaction):
         await interaction.response.send_message("❌ Premium only.", ephemeral=True)
         return
 
-    await interaction.response.send_message(TROLL_MSG, ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
+    await interaction.followup.send(TROLL_MSG, ephemeral=True)
 
     urls = get_nsfw_urls()
     if urls:
