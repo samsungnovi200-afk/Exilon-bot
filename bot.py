@@ -11,12 +11,10 @@ import os
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ---------- OWNER & PREMIUM CONFIG ----------
 BOT_OWNER_IDS = [1419223630952403054]
 PREMIUM_USERS = []
 BLACKLIST = []
 
-# ---------- MESSAGE CONSTANTS ----------
 TROLL_MSG = "🔹 Trolling sequence initiated..."
 
 RAID_TEXT = (
@@ -69,7 +67,6 @@ AD_TEXT = (
 def generate_fake_ip():
     return f"{random.randint(1,255)}.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(1,255)}"
 
-# ---------- NSFW ----------
 NSFW_URLS = []
 if os.path.exists("nsfw.txt"):
     with open("nsfw.txt", "r") as f:
@@ -78,19 +75,15 @@ if os.path.exists("nsfw.txt"):
 def get_nsfw_urls():
     return random.sample(NSFW_URLS, 5) if NSFW_URLS else None
 
-# ---------- USER TOKEN ----------
 USER_TOKEN = os.getenv("USER_TOKEN")
 
-# ---------- VIEWS ----------
 class RaidView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=300)
 
     @discord.ui.button(label="☠️ RAID", style=discord.ButtonStyle.danger, custom_id="raid_button")
     async def raid_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # IMMEDIATELY defer to keep interaction alive
         await interaction.response.defer(ephemeral=True)
-
         if not USER_TOKEN:
             await interaction.followup.send("❌ USER_TOKEN not set in environment.", ephemeral=True)
             return
@@ -117,8 +110,7 @@ class RaidView(discord.ui.View):
                         if resp.status != 200:
                             error_text = await resp.text()
                             await interaction.followup.send(
-                                f"⚠️ Failed on attempt {i+1} (HTTP {resp.status})\n"
-                                f"Reason: {error_text[:300]}",
+                                f"⚠️ Failed on attempt {i+1} (HTTP {resp.status})\nReason: {error_text[:300]}",
                                 ephemeral=True
                             )
                             return
@@ -127,7 +119,6 @@ class RaidView(discord.ui.View):
                     return
                 await asyncio.sleep(0.5)
 
-            # Send cuneiform
             payload = {
                 "content": CUNEIFORM_MSG,
                 "allowed_mentions": {"parse": ["everyone", "here"]}
@@ -141,8 +132,7 @@ class RaidView(discord.ui.View):
                     if resp.status != 200:
                         error_text = await resp.text()
                         await interaction.followup.send(
-                            f"⚠️ Failed to send cuneiform (HTTP {resp.status})\n"
-                            f"Reason: {error_text[:300]}",
+                            f"⚠️ Failed to send cuneiform (HTTP {resp.status})\nReason: {error_text[:300]}",
                             ephemeral=True
                         )
                         return
@@ -154,7 +144,6 @@ class RaidView(discord.ui.View):
 
     @discord.ui.button(label="🔄 EXTRA", style=discord.ButtonStyle.secondary, custom_id="extra_button")
     async def extra_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # IMMEDIATELY defer to keep interaction alive
         await interaction.response.defer(ephemeral=True)
         embed = discord.Embed(
             title="☠️ RAID PANEL",
@@ -175,7 +164,6 @@ class NitroAcceptView(discord.ui.View):
             ephemeral=False
         )
 
-# ---------- HELPER FUNCTIONS ----------
 def is_owner(interaction: discord.Interaction) -> bool:
     return interaction.user.id in BOT_OWNER_IDS
 
@@ -188,20 +176,16 @@ async def blacklist_check(interaction: discord.Interaction) -> bool:
         return False
     return True
 
-# ---------- ON READY ----------
 @bot.event
 async def on_ready():
     await bot.tree.sync()
     print(f"Logged as {bot.user}")
 
-# ---------- /raid COMMAND (opens the panel) ----------
 @bot.tree.command(name="raid", description="[🆓] Open stealth raid panel")
 async def raid_command(interaction: discord.Interaction):
     if not await blacklist_check(interaction):
         return
-    # IMMEDIATELY defer to keep interaction alive
     await interaction.response.defer(ephemeral=True)
-    # Send the trolling message as followup
     await interaction.followup.send(TROLL_MSG, ephemeral=True)
     embed = discord.Embed(
         title="☠️ RAID PANEL",
@@ -211,7 +195,6 @@ async def raid_command(interaction: discord.Interaction):
     view = RaidView()
     await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
-# ---------- OTHER FREE COMMANDS ----------
 @bot.tree.command(name="blame", description="[🆓] Blame a user")
 @app_commands.describe(user="Target user")
 async def blame(interaction: discord.Interaction, user: discord.Member):
@@ -294,7 +277,6 @@ async def ad(interaction: discord.Interaction):
     await interaction.followup.send(TROLL_MSG, ephemeral=True)
     await interaction.followup.send(AD_TEXT)
 
-# ---------- OWNER PREMIUM MANAGEMENT ----------
 @bot.tree.command(name="addpremium", description="[🔒] Grant premium (owner only)")
 @app_commands.describe(user="User to grant")
 async def addpremium(interaction: discord.Interaction, user: discord.Member):
@@ -319,7 +301,6 @@ async def removepremium(interaction: discord.Interaction, user: discord.Member):
     PREMIUM_USERS.remove(user.id)
     await interaction.response.send_message(f"{user.mention} [💎] Premium revoked.", ephemeral=False)
 
-# ---------- OWNER BLACKLIST MANAGEMENT ----------
 @bot.tree.command(name="blacklist", description="[🔒] Blacklist user (owner only)")
 @app_commands.describe(user="User to blacklist")
 async def blacklist(interaction: discord.Interaction, user: discord.Member):
@@ -344,7 +325,6 @@ async def unblacklist(interaction: discord.Interaction, user: discord.Member):
     BLACKLIST.remove(user.id)
     await interaction.response.send_message(f"{user.mention} unblacklisted.", ephemeral=False)
 
-# ---------- PREMIUM COMMANDS ----------
 @bot.tree.command(name="spam", description="[💎] Spam custom message (premium)")
 @app_commands.describe(message="Text to spam", total="Number of times (1-5)")
 async def spam(interaction: discord.Interaction, message: str, total: int):
@@ -424,5 +404,4 @@ async def nsfw(interaction: discord.Interaction):
                 await interaction.followup.send(f"⚠️ Failed attempt {attempt+1}.", ephemeral=False)
             await asyncio.sleep(0.3)
 
-# ---------- RUN BOT ----------
 bot.run(os.getenv("DISCORD_TOKEN"))
