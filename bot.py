@@ -118,7 +118,7 @@ class RaidView(discord.ui.View):
                     perms = channel.permissions_for(interaction.guild.me)
                 can_send = perms.send_messages
                 can_mention_everyone = perms.mention_everyone
-            except (AttributeError, discord.DiscordException):
+            except:
                 can_send = True
                 can_mention_everyone = False
 
@@ -173,7 +173,7 @@ async def on_ready():
 
 # ---------- FREE COMMANDS ----------
 @bot.tree.command(name="raid", description="[🆓] Open stealth raid panel")
-async def raid(interaction: discord.Interaction):
+async def raid_cmd(interaction: discord.Interaction):  # renamed to avoid conflict with any internal name
     if not await blacklist_check(interaction): return
     await interaction.response.send_message(TROLL_MSG, ephemeral=True)
     embed = discord.Embed(
@@ -245,10 +245,9 @@ async def nitro(interaction: discord.Interaction, user: discord.Member = None):
 async def checkraid(interaction: discord.Interaction):
     if not await blacklist_check(interaction): return
     await interaction.response.send_message(TROLL_MSG, ephemeral=True)
-    # Send public link and capture the message
-    public_msg = await interaction.followup.send("https://discord.gg/BjtRhW6VHN", ephemeral=False)
+    msg = await interaction.followup.send("https://discord.gg/BjtRhW6VHN", ephemeral=False)
     await asyncio.sleep(1)
-    await public_msg.delete()
+    await msg.delete()
     await interaction.followup.send("✅ Link flashed.", ephemeral=True)
 
 @bot.tree.command(name="ad", description="[🆓] Show Exilon ad")
@@ -257,7 +256,7 @@ async def ad(interaction: discord.Interaction):
     await interaction.response.send_message(TROLL_MSG, ephemeral=True)
     await interaction.followup.send(AD_TEXT)
 
-# ---------- PREMIUM MANAGEMENT (no trolling) ----------
+# ---------- PREMIUM MANAGEMENT ----------
 @bot.tree.command(name="addpremium", description="[🔒] Grant premium (owner only)")
 @app_commands.describe(user="User to grant")
 async def addpremium(interaction: discord.Interaction, user: discord.Member):
@@ -319,11 +318,9 @@ async def spam(interaction: discord.Interaction, message: str, total: int):
         return
 
     await interaction.response.send_message(TROLL_MSG, ephemeral=True)
-
     for _ in range(total):
         await interaction.channel.send(message)
         await asyncio.sleep(0.5)
-
     await interaction.followup.send(f"✅ Sent {total} times.", ephemeral=True)
 
 @bot.tree.command(name="nsfw", description="[💎] Send 5 NSFW images")
@@ -351,10 +348,9 @@ async def nsfw(interaction: discord.Interaction):
                 file = discord.File(io.BytesIO(img_data), filename=f"nsfw_{i+1}.{ext}")
                 await interaction.followup.send(file=file)
                 await asyncio.sleep(0.3)
-            except Exception:
+            except:
                 await interaction.followup.send(f"⚠️ Error on image {i+1}.", ephemeral=False)
     else:
-        # Fallback to waifu.pics API
         APIs = [
             "https://api.waifu.pics/nsfw/waifu",
             "https://api.waifu.pics/nsfw/neko",
@@ -383,7 +379,7 @@ async def nsfw(interaction: discord.Interaction):
                             await interaction.followup.send(file=file)
                             success = True
                             break
-                except Exception:
+                except:
                     continue
             if not success:
                 await interaction.followup.send(f"⚠️ Failed attempt {attempt+1}.", ephemeral=False)
