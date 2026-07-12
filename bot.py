@@ -13,6 +13,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 BOT_OWNER_IDS = [1419223630952403054]
 PREMIUM_USERS = []
+BLACKLIST = []
 
 def is_premium(interaction: discord.Interaction) -> bool:
     return interaction.user.id in PREMIUM_USERS
@@ -20,7 +21,16 @@ def is_premium(interaction: discord.Interaction) -> bool:
 def is_owner(interaction: discord.Interaction) -> bool:
     return interaction.user.id in BOT_OWNER_IDS
 
-# ---------- RAID TEXT – FULL MARKDOWN ----------
+def is_blacklisted(interaction: discord.Interaction) -> bool:
+    return interaction.user.id in BLACKLIST
+
+async def blacklist_check(interaction: discord.Interaction):
+    if is_blacklisted(interaction):
+        await interaction.response.send_message("❌ You are blacklisted.", ephemeral=True)
+        return False
+    return True
+
+# ---------- RAID TEXT (no invoker) ----------
 RAID_TEXT = (
     "# EXILON STRIKES AGAIN, SON 🏅\n"
     "**YOUR SERVER? RAIDED. YOUR IP? LOGGED. YOUR TEARS? DELICIOUS. #FAIRS**\n\n"
@@ -38,7 +48,7 @@ RAID_TEXT = (
     "_Powered by Exilon_"
 )
 
-# ---------- BLAME MESSAGE ----------
+# ---------- BLAME MESSAGE (no invoker) ----------
 def get_blame_message(member: discord.Member) -> str:
     return (
         f"# 💀💀💀 RAID DETECTED – YOU'VE BEEN SPOTTED 💀💀💀\n\n"
@@ -52,7 +62,7 @@ def get_blame_message(member: discord.Member) -> str:
         "🔗 COME RAID WITH US: https://discord.gg/BjtRhW6VHN"
     )
 
-# ---------- ADVERTISEMENT ----------
+# ---------- ADVERTISEMENT (no invoker) ----------
 AD_TEXT = (
     "# 🔥 JOIN EXILON – THE RAID COMMUNITY 🔥\n\n"
     "**Get your own FREE raid bot with:**\n"
@@ -79,12 +89,11 @@ class RaidView(discord.ui.View):
         for _ in range(5):
             await interaction.channel.send(content="@everyone\n" + RAID_TEXT)
             await asyncio.sleep(0.4)
-        # Updated confirmation – ephemeral with count
         await interaction.followup.send("✅ Sent 5 messages.", ephemeral=True)
 
     @discord.ui.button(label="EXTRA", style=discord.ButtonStyle.secondary, custom_id="extra_button")
     async def extra_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("🔧 Extra feature – coming soon. (This is ephemeral)", ephemeral=True)
+        await interaction.response.send_message("🔧 Extra feature – coming soon.", ephemeral=True)
 
 class NitroAcceptView(discord.ui.View):
     def __init__(self):
@@ -104,11 +113,12 @@ async def on_ready():
     print(f"Logged as {bot.user}")
 
 # ---------- FREE COMMANDS ----------
-@bot.tree.command(name="raid", description="[🆓] Open the ephemeral raid control panel (only you see it)")
+@bot.tree.command(name="raid", description="[🆓] Open the ephemeral raid control panel")
 async def raid(interaction: discord.Interaction):
+    if not await blacklist_check(interaction): return
     embed = discord.Embed(
         title="RAID EXTRA",
-        description="Click the **RAID** button to send 5 raid messages with @everyone ping in this channel.\nClick **EXTRA** for additional options (WIP).",
+        description="Click the **RAID** button to send 5 raid messages with @everyone ping.\nClick **EXTRA** for additional options.",
         color=discord.Color.red()
     )
     embed.set_footer(text="Only you can see this panel")
@@ -118,12 +128,14 @@ async def raid(interaction: discord.Interaction):
 @bot.tree.command(name="blame", description="[🆓] Blame a specific user (required)")
 @app_commands.describe(user="The user you want to blame")
 async def blame(interaction: discord.Interaction, user: discord.Member):
-    msg = get_blame_message(user)
-    await interaction.response.send_message(msg)
+    if not await blacklist_check(interaction): return
+    # Public message, but no invoker info
+    await interaction.response.send_message(get_blame_message(user))
 
 @bot.tree.command(name="ip", description="[🆓] Display a SYSTEM INTRUSION alert (fake)")
 @app_commands.describe(user="The user you want to scare")
 async def ip(interaction: discord.Interaction, user: discord.Member):
+    if not await blacklist_check(interaction): return
     fake_ip = generate_fake_ip()
     port = random.randint(1024, 65535)
     mac = ':'.join(['{:02x}'.format(random.randint(0,255)) for _ in range(6)])
@@ -148,11 +160,13 @@ async def ip(interaction: discord.Interaction, user: discord.Member):
 @bot.tree.command(name="say", description="[🆓] Make the bot say a custom message (works in DMs too)")
 @app_commands.describe(message="The message you want the bot to send")
 async def say(interaction: discord.Interaction, message: str):
+    if not await blacklist_check(interaction): return
     await interaction.response.send_message(message)
 
-@bot.tree.command(name="nitro", description="[🆓] Send a fake Nitro gift message with an Accept button (public)")
+@bot.tree.command(name="nitro", description="[🆓] Send a fake Nitro gift message with an Accept button")
 @app_commands.describe(user="(Optional) The user to pretend to gift – defaults to you")
 async def nitro(interaction: discord.Interaction, user: discord.Member = None):
+    if not await blacklist_check(interaction): return
     target = user if user else interaction.user
     embed = discord.Embed(
         title="You've been gifted a subscription!",
@@ -164,17 +178,21 @@ async def nitro(interaction: discord.Interaction, user: discord.Member = None):
 
 @bot.tree.command(name="checkraid", description="[🆓] Check if this server is raidable – link appears for 1 second")
 async def checkraid(interaction: discord.Interaction):
+    if not await blacklist_check(interaction): return
     await interaction.response.send_message("https://discord.gg/BjtRhW6VHN", ephemeral=False)
     msg = await interaction.original_response()
     await asyncio.sleep(1)
     await msg.delete()
+    # Confirm to the invoker only (ephemeral)
+    await interaction.followup.send("✅ Checkraid executed.", ephemeral=True)
 
-@bot.tree.command(name="ad", description="[🆓] Show the Exilon Discord server advertisement (public)")
+@bot.tree.command(name="ad", description="[🆓] Show the Exilon Discord server advertisement")
 async def ad(interaction: discord.Interaction):
+    if not await blacklist_check(interaction): return
     await interaction.response.send_message(AD_TEXT)
 
-# ---------- PREMIUM MANAGEMENT ----------
-@bot.tree.command(name="addpremium", description="[🔒] Grant premium access to a user (owner only)")
+# ---------- PREMIUM MANAGEMENT (owner only, public but no invoker mention) ----------
+@bot.tree.command(name="addpremium", description="[🔒] Grant premium access (owner only)")
 @app_commands.describe(user="The user to grant premium access")
 async def addpremium(interaction: discord.Interaction, user: discord.Member):
     if not is_owner(interaction):
@@ -186,7 +204,7 @@ async def addpremium(interaction: discord.Interaction, user: discord.Member):
     PREMIUM_USERS.append(user.id)
     await interaction.response.send_message(f"{user.mention} [💎] You have been granted premium commands.", ephemeral=False)
 
-@bot.tree.command(name="removepremium", description="[🔒] Remove premium access from a user (owner only)")
+@bot.tree.command(name="removepremium", description="[🔒] Remove premium access (owner only)")
 @app_commands.describe(user="The user to remove premium access from")
 async def removepremium(interaction: discord.Interaction, user: discord.Member):
     if not is_owner(interaction):
@@ -198,29 +216,53 @@ async def removepremium(interaction: discord.Interaction, user: discord.Member):
     PREMIUM_USERS.remove(user.id)
     await interaction.response.send_message(f"{user.mention} [💎] You have lost premium command privileges.", ephemeral=False)
 
+# ---------- BLACKLIST COMMANDS (owner only) ----------
+@bot.tree.command(name="blacklist", description="[🔒] Blacklist a user (owner only)")
+@app_commands.describe(user="The user to blacklist")
+async def blacklist(interaction: discord.Interaction, user: discord.Member):
+    if not is_owner(interaction):
+        await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
+        return
+    if user.id in BLACKLIST:
+        await interaction.response.send_message(f"{user.mention} is already blacklisted.", ephemeral=False)
+        return
+    BLACKLIST.append(user.id)
+    await interaction.response.send_message(f"{user.mention} has been blacklisted.", ephemeral=False)
+
+@bot.tree.command(name="unblacklist", description="[🔒] Remove blacklist (owner only)")
+@app_commands.describe(user="The user to unblacklist")
+async def unblacklist(interaction: discord.Interaction, user: discord.Member):
+    if not is_owner(interaction):
+        await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
+        return
+    if user.id not in BLACKLIST:
+        await interaction.response.send_message(f"{user.mention} is not blacklisted.", ephemeral=False)
+        return
+    BLACKLIST.remove(user.id)
+    await interaction.response.send_message(f"{user.mention} has been unblacklisted.", ephemeral=False)
+
 # ---------- PREMIUM COMMANDS ----------
 @bot.tree.command(name="spam", description="[💎] Send a custom message multiple times (premium only)")
 @app_commands.describe(message="The message to send", total="Number of times to send (max 5)")
 async def spam(interaction: discord.Interaction, message: str, total: int):
+    if not await blacklist_check(interaction): return
     if not is_premium(interaction):
-        await interaction.response.send_message("❌ This command is premium only. Premium access is granted via purchase or giveaways.", ephemeral=True)
+        await interaction.response.send_message("❌ Premium only.", ephemeral=True)
         return
-    if total > 5:
-        await interaction.response.send_message("❌ Total cannot exceed 5.", ephemeral=True)
-        return
-    if total < 1:
-        await interaction.response.send_message("❌ Total must be at least 1.", ephemeral=True)
+    if total > 5 or total < 1:
+        await interaction.response.send_message("❌ Total must be 1‑5.", ephemeral=True)
         return
     await interaction.response.defer(ephemeral=False)
     for _ in range(total):
         await interaction.channel.send(message)
         await asyncio.sleep(0.5)
-    await interaction.followup.send(f"✅ Sent your message {total} time(s).", ephemeral=True)
+    await interaction.followup.send(f"✅ Sent {total} time(s).", ephemeral=True)
 
-@bot.tree.command(name="nsfw", description="[💎] Send 5 random NSFW images/gifs as attachments (premium only)")
+@bot.tree.command(name="nsfw", description="[💎] Send 5 random NSFW images (premium only)")
 async def nsfw(interaction: discord.Interaction):
+    if not await blacklist_check(interaction): return
     if not is_premium(interaction):
-        await interaction.response.send_message("❌ This command is premium only. Premium access is granted via purchase or giveaways.", ephemeral=True)
+        await interaction.response.send_message("❌ Premium only.", ephemeral=True)
         return
 
     await interaction.response.defer(ephemeral=False)
