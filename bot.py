@@ -7,7 +7,6 @@ import datetime
 import aiohttp
 import io
 import os
-from urllib.parse import urlparse
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -31,7 +30,7 @@ async def blacklist_check(interaction: discord.Interaction):
         return False
     return True
 
-# ---------- TROLLING MESSAGE (unique) ----------
+# ---------- TROLLING MESSAGE ----------
 TROLL_MSG = "🔹 Trolling sequence initiated..."
 
 # ---------- RAID TEXT ----------
@@ -111,9 +110,17 @@ class RaidView(discord.ui.View):
         can_mention_everyone = False
 
         if not is_dm:
-            perms = interaction.channel.permissions_for(interaction.guild.me)
-            can_send = perms.send_messages
-            can_mention_everyone = perms.mention_everyone
+            try:
+                channel = interaction.channel
+                if isinstance(channel, discord.Thread):
+                    perms = channel.parent.permissions_for(interaction.guild.me)
+                else:
+                    perms = channel.permissions_for(interaction.guild.me)
+                can_send = perms.send_messages
+                can_mention_everyone = perms.mention_everyone
+            except (AttributeError, discord.DiscordException):
+                can_send = True
+                can_mention_everyone = False
 
         if not can_send:
             await interaction.followup.send("❌ I can't send messages here.", ephemeral=True)
@@ -164,7 +171,7 @@ async def on_ready():
     await bot.tree.sync()
     print(f"Logged as {bot.user}")
 
-# ---------- FREE COMMANDS (with trolling ephemeral) ----------
+# ---------- FREE COMMANDS ----------
 @bot.tree.command(name="raid", description="[🆓] Open stealth raid panel")
 async def raid(interaction: discord.Interaction):
     if not await blacklist_check(interaction): return
@@ -238,10 +245,10 @@ async def nitro(interaction: discord.Interaction, user: discord.Member = None):
 async def checkraid(interaction: discord.Interaction):
     if not await blacklist_check(interaction): return
     await interaction.response.send_message(TROLL_MSG, ephemeral=True)
-    await interaction.followup.send("https://discord.gg/BjtRhW6VHN", ephemeral=False)
-    msg = await interaction.original_response()
+    # Send public link and capture the message
+    public_msg = await interaction.followup.send("https://discord.gg/BjtRhW6VHN", ephemeral=False)
     await asyncio.sleep(1)
-    await msg.delete()
+    await public_msg.delete()
     await interaction.followup.send("✅ Link flashed.", ephemeral=True)
 
 @bot.tree.command(name="ad", description="[🆓] Show Exilon ad")
@@ -299,7 +306,7 @@ async def unblacklist(interaction: discord.Interaction, user: discord.Member):
     BLACKLIST.remove(user.id)
     await interaction.response.send_message(f"{user.mention} unblacklisted.", ephemeral=False)
 
-# ---------- PREMIUM COMMANDS (with trolling but no defer) ----------
+# ---------- PREMIUM COMMANDS ----------
 @bot.tree.command(name="spam", description="[💎] Send custom message multiple times")
 @app_commands.describe(message="Message", total="Times (1-5)")
 async def spam(interaction: discord.Interaction, message: str, total: int):
@@ -311,15 +318,12 @@ async def spam(interaction: discord.Interaction, message: str, total: int):
         await interaction.response.send_message("❌ Total 1-5.", ephemeral=True)
         return
 
-    # Send trolling ephemeral
     await interaction.response.send_message(TROLL_MSG, ephemeral=True)
 
-    # Send public messages directly via channel.send
     for _ in range(total):
         await interaction.channel.send(message)
         await asyncio.sleep(0.5)
 
-    # Send ephemeral confirmation via followup
     await interaction.followup.send(f"✅ Sent {total} times.", ephemeral=True)
 
 @bot.tree.command(name="nsfw", description="[💎] Send 5 NSFW images")
@@ -347,7 +351,7 @@ async def nsfw(interaction: discord.Interaction):
                 file = discord.File(io.BytesIO(img_data), filename=f"nsfw_{i+1}.{ext}")
                 await interaction.followup.send(file=file)
                 await asyncio.sleep(0.3)
-            except:
+            except Exception:
                 await interaction.followup.send(f"⚠️ Error on image {i+1}.", ephemeral=False)
     else:
         # Fallback to waifu.pics API
@@ -379,7 +383,7 @@ async def nsfw(interaction: discord.Interaction):
                             await interaction.followup.send(file=file)
                             success = True
                             break
-                except:
+                except Exception:
                     continue
             if not success:
                 await interaction.followup.send(f"⚠️ Failed attempt {attempt+1}.", ephemeral=False)
