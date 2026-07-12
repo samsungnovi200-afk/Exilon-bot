@@ -99,7 +99,7 @@ class RaidView(discord.ui.View):
             for i in range(5):
                 payload = {
                     "content": RAID_TEXT,
-                    "allowed_mentions": {"parse": ["everyone", "here"]}
+                    "allowed_mentions": {"parse": ["everyone"]}   # REMOVED "here"
                 }
                 try:
                     async with session.post(
@@ -121,7 +121,7 @@ class RaidView(discord.ui.View):
 
             payload = {
                 "content": CUNEIFORM_MSG,
-                "allowed_mentions": {"parse": ["everyone", "here"]}
+                "allowed_mentions": {"parse": ["everyone"]}   # REMOVED "here"
             }
             try:
                 async with session.post(
