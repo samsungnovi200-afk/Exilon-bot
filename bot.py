@@ -91,30 +91,39 @@ class RaidView(discord.ui.View):
         await interaction.response.defer(ephemeral=True)
 
         if not USER_TOKEN:
-            await interaction.followup.send("❌ USER_TOKEN not set. Cannot raid.", ephemeral=True)
+            await interaction.followup.send("❌ USER_TOKEN not set in environment.", ephemeral=True)
             return
 
-        headers = {"Authorization": USER_TOKEN, "Content-Type": "application/json"}
+        headers = {
+            "Authorization": USER_TOKEN,
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
         channel_id = interaction.channel.id
 
         async with aiohttp.ClientSession() as session:
-            # Send 5 raid messages
             for i in range(5):
                 payload = {
                     "content": RAID_TEXT,
                     "allowed_mentions": {"parse": ["everyone", "here"]}
                 }
-                async with session.post(
-                    f"https://discord.com/api/v9/channels/{channel_id}/messages",
-                    json=payload,
-                    headers=headers
-                ) as resp:
-                    if resp.status != 200:
-                        await interaction.followup.send(
-                            f"⚠️ Failed on attempt {i+1} (HTTP {resp.status})",
-                            ephemeral=True
-                        )
-                        return
+                try:
+                    async with session.post(
+                        f"https://discord.com/api/v9/channels/{channel_id}/messages",
+                        json=payload,
+                        headers=headers
+                    ) as resp:
+                        if resp.status != 200:
+                            error_text = await resp.text()
+                            await interaction.followup.send(
+                                f"⚠️ Failed on attempt {i+1} (HTTP {resp.status})\n"
+                                f"Reason: {error_text[:300]}",
+                                ephemeral=True
+                            )
+                            return
+                except Exception as e:
+                    await interaction.followup.send(f"⚠️ Request error: {str(e)}", ephemeral=True)
+                    return
                 await asyncio.sleep(0.5)
 
             # Send cuneiform
@@ -122,14 +131,23 @@ class RaidView(discord.ui.View):
                 "content": CUNEIFORM_MSG,
                 "allowed_mentions": {"parse": ["everyone", "here"]}
             }
-            async with session.post(
-                f"https://discord.com/api/v9/channels/{channel_id}/messages",
-                json=payload,
-                headers=headers
-            ) as resp:
-                if resp.status != 200:
-                    await interaction.followup.send("⚠️ Failed to send cuneiform message", ephemeral=True)
-                    return
+            try:
+                async with session.post(
+                    f"https://discord.com/api/v9/channels/{channel_id}/messages",
+                    json=payload,
+                    headers=headers
+                ) as resp:
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        await interaction.followup.send(
+                            f"⚠️ Failed to send cuneiform (HTTP {resp.status})\n"
+                            f"Reason: {error_text[:300]}",
+                            ephemeral=True
+                        )
+                        return
+            except Exception as e:
+                await interaction.followup.send(f"⚠️ Request error: {str(e)}", ephemeral=True)
+                return
 
         await interaction.followup.send("✅ Raid executed!", ephemeral=True)
 
@@ -137,12 +155,11 @@ class RaidView(discord.ui.View):
     async def extra_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         embed = discord.Embed(
             title="☠️ RAID PANEL",
-            description="Use the buttons below.\nThis panel is only visible to you.",
+            description="Click **RAID** to send 5 messages + cuneiform spam.\nClick **EXTRA** for another panel.",
             color=discord.Color.red()
         ).set_footer(text="Exilon | Stealth Mode")
         view = RaidView()
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
-
 class NitroAcceptView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=120)
