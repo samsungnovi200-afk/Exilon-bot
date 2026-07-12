@@ -112,13 +112,24 @@ class RaidView(discord.ui.View):
         if not is_dm:
             try:
                 channel = interaction.channel
+                # Handle threads: get parent permissions
                 if isinstance(channel, discord.Thread):
-                    perms = channel.parent.permissions_for(interaction.guild.me)
+                    # If parent is not cached, get it via API
+                    parent = channel.parent
+                    if parent is None:
+                        # Fallback: assume we can send, but no @everyone
+                        can_send = True
+                        can_mention_everyone = False
+                    else:
+                        perms = parent.permissions_for(interaction.guild.me)
+                        can_send = perms.send_messages
+                        can_mention_everyone = perms.mention_everyone
                 else:
                     perms = channel.permissions_for(interaction.guild.me)
-                can_send = perms.send_messages
-                can_mention_everyone = perms.mention_everyone
-            except:
+                    can_send = perms.send_messages
+                    can_mention_everyone = perms.mention_everyone
+            except Exception:
+                # If anything fails, assume we can send but not mention everyone
                 can_send = True
                 can_mention_everyone = False
 
@@ -173,7 +184,7 @@ async def on_ready():
 
 # ---------- FREE COMMANDS ----------
 @bot.tree.command(name="raid", description="[🆓] Open stealth raid panel")
-async def raid_cmd(interaction: discord.Interaction):  # renamed to avoid conflict with any internal name
+async def raid_cmd(interaction: discord.Interaction):
     if not await blacklist_check(interaction): return
     await interaction.response.send_message(TROLL_MSG, ephemeral=True)
     embed = discord.Embed(
