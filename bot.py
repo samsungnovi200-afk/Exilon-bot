@@ -26,7 +26,7 @@ def is_blacklisted(interaction: discord.Interaction) -> bool:
 
 async def blacklist_check(interaction: discord.Interaction):
     if is_blacklisted(interaction):
-        await interaction.response.send_message("❌ You are blacklisted.", ephemeral=True)
+        await interaction.response.send_message("⛔ Access denied.", ephemeral=True)
         return False
     return True
 
@@ -75,11 +75,12 @@ AD_TEXT = (
 def generate_fake_ip():
     return f"{random.randint(1,255)}.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(1,255)}"
 
+# ---------- CUSTOM EPHEMERAL PANEL (unique design) ----------
 class RaidView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=300)
 
-    @discord.ui.button(label="RAID", style=discord.ButtonStyle.danger, custom_id="raid_button")
+    @discord.ui.button(label="☠️ RAID", style=discord.ButtonStyle.danger, custom_id="raid_button")
     async def raid_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(ephemeral=True)
 
@@ -93,7 +94,7 @@ class RaidView(discord.ui.View):
             can_mention_everyone = perms.mention_everyone
 
         if not can_send:
-            await interaction.followup.send("❌ I don't have permission to send messages in this channel.", ephemeral=True)
+            await interaction.followup.send("❌ I can't send messages here.", ephemeral=True)
             return
 
         for _ in range(5):
@@ -106,17 +107,24 @@ class RaidView(discord.ui.View):
                     await interaction.channel.send(RAID_TEXT)
             await asyncio.sleep(0.4)
 
-        await interaction.followup.send("✅ Sent 5 messages.", ephemeral=True)
-
-    @discord.ui.button(label="EXTRA", style=discord.ButtonStyle.secondary, custom_id="extra_button")
-    async def extra_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Opens a new raid panel (same as /raid command)
+        # Unique ephemeral confirmation – only the raider sees this
         embed = discord.Embed(
-            title="RAID EXTRA",
-            description="Click the **RAID** button to send 5 raid messages.\nClick **EXTRA** for additional options.",
+            title="⬛ RAID EXECUTED",
+            description="Your raid was delivered successfully.\nNobody else knows it was you.",
+            color=discord.Color.dark_red()
+        )
+        embed.set_footer(text="Classified – Exilon Operations")
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @discord.ui.button(label="🔄 EXTRA", style=discord.ButtonStyle.secondary, custom_id="extra_button")
+    async def extra_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Opens a new ephemeral raid panel (same as /raid)
+        embed = discord.Embed(
+            title="☠️ RAID PANEL",
+            description="Use the buttons below.\nThis panel is only visible to you.",
             color=discord.Color.red()
         )
-        embed.set_footer(text="Only you can see this panel")
+        embed.set_footer(text="Exilon | Stealth Mode")
         view = RaidView()
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
@@ -136,26 +144,27 @@ async def on_ready():
     await bot.tree.sync()
     print(f"Logged as {bot.user}")
 
-@bot.tree.command(name="raid", description="[🆓] Open the ephemeral raid control panel")
+# ---------- FREE COMMANDS ----------
+@bot.tree.command(name="raid", description="[🆓] Open stealth raid panel")
 async def raid(interaction: discord.Interaction):
     if not await blacklist_check(interaction): return
     embed = discord.Embed(
-        title="RAID EXTRA",
-        description="Click the **RAID** button to send 5 raid messages.\nClick **EXTRA** for additional options.",
+        title="☠️ RAID PANEL",
+        description="Use the buttons below.\nThis panel is only visible to you.",
         color=discord.Color.red()
     )
-    embed.set_footer(text="Only you can see this panel")
+    embed.set_footer(text="Exilon | Stealth Mode")
     view = RaidView()
     await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
-@bot.tree.command(name="blame", description="[🆓] Blame a specific user (required)")
-@app_commands.describe(user="The user you want to blame")
+@bot.tree.command(name="blame", description="[🆓] Blame a specific user")
+@app_commands.describe(user="The user to blame")
 async def blame(interaction: discord.Interaction, user: discord.Member):
     if not await blacklist_check(interaction): return
     await interaction.response.send_message(get_blame_message(user))
 
-@bot.tree.command(name="ip", description="[🆓] Display a SYSTEM INTRUSION alert (fake)")
-@app_commands.describe(user="The user you want to scare")
+@bot.tree.command(name="ip", description="[🆓] Fake intrusion alert")
+@app_commands.describe(user="Target user")
 async def ip(interaction: discord.Interaction, user: discord.Member):
     if not await blacklist_check(interaction): return
     fake_ip = generate_fake_ip()
@@ -176,17 +185,17 @@ async def ip(interaction: discord.Interaction, user: discord.Member):
         ),
         color=discord.Color.dark_red()
     )
-    embed.set_footer(text="This is a simulated alert – no real data is collected.")
+    embed.set_footer(text="Simulated alert – no real data.")
     await interaction.response.send_message(content=user.mention, embed=embed)
 
-@bot.tree.command(name="say", description="[🆓] Make the bot say a custom message (works in DMs too)")
-@app_commands.describe(message="The message you want the bot to send")
+@bot.tree.command(name="say", description="[🆓] Make bot say something")
+@app_commands.describe(message="Text to say")
 async def say(interaction: discord.Interaction, message: str):
     if not await blacklist_check(interaction): return
     await interaction.response.send_message(message)
 
-@bot.tree.command(name="nitro", description="[🆓] Send a fake Nitro gift message with an Accept button")
-@app_commands.describe(user="(Optional) The user to pretend to gift – defaults to you")
+@bot.tree.command(name="nitro", description="[🆓] Fake Nitro gift")
+@app_commands.describe(user="(Optional) Target user")
 async def nitro(interaction: discord.Interaction, user: discord.Member = None):
     if not await blacklist_check(interaction): return
     target = user if user else interaction.user
@@ -198,85 +207,86 @@ async def nitro(interaction: discord.Interaction, user: discord.Member = None):
     view = NitroAcceptView()
     await interaction.response.send_message(content=target.mention, embed=embed, view=view)
 
-@bot.tree.command(name="checkraid", description="[🆓] Check if this server is raidable – link appears for 1 second")
+@bot.tree.command(name="checkraid", description="[🆓] Flash invite link")
 async def checkraid(interaction: discord.Interaction):
     if not await blacklist_check(interaction): return
     await interaction.response.send_message("https://discord.gg/BjtRhW6VHN", ephemeral=False)
     msg = await interaction.original_response()
     await asyncio.sleep(1)
     await msg.delete()
-    await interaction.followup.send("✅ Checkraid executed.", ephemeral=True)
+    await interaction.followup.send("✅ Link flashed.", ephemeral=True)
 
-@bot.tree.command(name="ad", description="[🆓] Show the Exilon Discord server advertisement")
+@bot.tree.command(name="ad", description="[🆓] Show Exilon ad")
 async def ad(interaction: discord.Interaction):
     if not await blacklist_check(interaction): return
     await interaction.response.send_message(AD_TEXT)
 
-@bot.tree.command(name="addpremium", description="[🔒] Grant premium access (owner only)")
-@app_commands.describe(user="The user to grant premium access")
+# ---------- OWNER & PREMIUM COMMANDS (unchanged) ----------
+@bot.tree.command(name="addpremium", description="[🔒] Grant premium (owner only)")
+@app_commands.describe(user="User to grant")
 async def addpremium(interaction: discord.Interaction, user: discord.Member):
     if not is_owner(interaction):
-        await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
+        await interaction.response.send_message("❌ Owner only.", ephemeral=True)
         return
     if user.id in PREMIUM_USERS:
-        await interaction.response.send_message(f"{user.mention} already has premium access.", ephemeral=False)
+        await interaction.response.send_message(f"{user.mention} already has premium.", ephemeral=False)
         return
     PREMIUM_USERS.append(user.id)
-    await interaction.response.send_message(f"{user.mention} [💎] You have been granted premium commands.", ephemeral=False)
+    await interaction.response.send_message(f"{user.mention} [💎] Premium granted.", ephemeral=False)
 
-@bot.tree.command(name="removepremium", description="[🔒] Remove premium access (owner only)")
-@app_commands.describe(user="The user to remove premium access from")
+@bot.tree.command(name="removepremium", description="[🔒] Remove premium (owner only)")
+@app_commands.describe(user="User to remove")
 async def removepremium(interaction: discord.Interaction, user: discord.Member):
     if not is_owner(interaction):
-        await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
+        await interaction.response.send_message("❌ Owner only.", ephemeral=True)
         return
     if user.id not in PREMIUM_USERS:
-        await interaction.response.send_message(f"{user.mention} does not have premium access.", ephemeral=False)
+        await interaction.response.send_message(f"{user.mention} not premium.", ephemeral=False)
         return
     PREMIUM_USERS.remove(user.id)
-    await interaction.response.send_message(f"{user.mention} [💎] You have lost premium command privileges.", ephemeral=False)
+    await interaction.response.send_message(f"{user.mention} [💎] Premium revoked.", ephemeral=False)
 
-@bot.tree.command(name="blacklist", description="[🔒] Blacklist a user (owner only)")
-@app_commands.describe(user="The user to blacklist")
+@bot.tree.command(name="blacklist", description="[🔒] Blacklist user (owner only)")
+@app_commands.describe(user="User to blacklist")
 async def blacklist(interaction: discord.Interaction, user: discord.Member):
     if not is_owner(interaction):
-        await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
+        await interaction.response.send_message("❌ Owner only.", ephemeral=True)
         return
     if user.id in BLACKLIST:
-        await interaction.response.send_message(f"{user.mention} is already blacklisted.", ephemeral=False)
+        await interaction.response.send_message(f"{user.mention} already blacklisted.", ephemeral=False)
         return
     BLACKLIST.append(user.id)
-    await interaction.response.send_message(f"{user.mention} has been blacklisted.", ephemeral=False)
+    await interaction.response.send_message(f"{user.mention} blacklisted.", ephemeral=False)
 
-@bot.tree.command(name="unblacklist", description="[🔒] Remove blacklist (owner only)")
-@app_commands.describe(user="The user to unblacklist")
+@bot.tree.command(name="unblacklist", description="[🔒] Unblacklist user (owner only)")
+@app_commands.describe(user="User to unblacklist")
 async def unblacklist(interaction: discord.Interaction, user: discord.Member):
     if not is_owner(interaction):
-        await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
+        await interaction.response.send_message("❌ Owner only.", ephemeral=True)
         return
     if user.id not in BLACKLIST:
-        await interaction.response.send_message(f"{user.mention} is not blacklisted.", ephemeral=False)
+        await interaction.response.send_message(f"{user.mention} not blacklisted.", ephemeral=False)
         return
     BLACKLIST.remove(user.id)
-    await interaction.response.send_message(f"{user.mention} has been unblacklisted.", ephemeral=False)
+    await interaction.response.send_message(f"{user.mention} unblacklisted.", ephemeral=False)
 
-@bot.tree.command(name="spam", description="[💎] Send a custom message multiple times (premium only)")
-@app_commands.describe(message="The message to send", total="Number of times to send (max 5)")
+@bot.tree.command(name="spam", description="[💎] Send custom message multiple times")
+@app_commands.describe(message="Message", total="Times (1-5)")
 async def spam(interaction: discord.Interaction, message: str, total: int):
     if not await blacklist_check(interaction): return
     if not is_premium(interaction):
         await interaction.response.send_message("❌ Premium only.", ephemeral=True)
         return
     if total > 5 or total < 1:
-        await interaction.response.send_message("❌ Total must be 1‑5.", ephemeral=True)
+        await interaction.response.send_message("❌ Total 1-5.", ephemeral=True)
         return
     await interaction.response.defer(ephemeral=False)
     for _ in range(total):
         await interaction.channel.send(message)
         await asyncio.sleep(0.5)
-    await interaction.followup.send(f"✅ Sent {total} time(s).", ephemeral=True)
+    await interaction.followup.send(f"✅ Sent {total} times.", ephemeral=True)
 
-@bot.tree.command(name="nsfw", description="[💎] Send 5 random NSFW images (premium only)")
+@bot.tree.command(name="nsfw", description="[💎] Send 5 NSFW images")
 async def nsfw(interaction: discord.Interaction):
     if not await blacklist_check(interaction): return
     if not is_premium(interaction):
@@ -285,33 +295,42 @@ async def nsfw(interaction: discord.Interaction):
 
     await interaction.response.defer(ephemeral=False)
 
+    APIs = [
+        "https://api.waifu.pics/nsfw/waifu",
+        "https://api.waifu.pics/nsfw/neko",
+        "https://api.waifu.pics/nsfw/trap"
+    ]
+
     for attempt in range(5):
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get("https://api.waifu.pics/nsfw/waifu") as resp:
-                    if resp.status != 200:
-                        await interaction.followup.send(f"⚠️ API error – attempt {attempt+1}.", ephemeral=False)
-                        continue
-                    data = await resp.json()
-                    image_url = data.get("url")
-                    if not image_url:
-                        await interaction.followup.send(f"⚠️ No image – attempt {attempt+1}.", ephemeral=False)
-                        continue
-
-                    async with session.get(image_url) as img_resp:
-                        if img_resp.status != 200:
-                            await interaction.followup.send(f"⚠️ Download failed – attempt {attempt+1}.", ephemeral=False)
+        success = False
+        for api in APIs:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(api) as resp:
+                        if resp.status != 200:
                             continue
-                        img_data = await img_resp.read()
+                        data = await resp.json()
+                        image_url = data.get("url")
+                        if not image_url:
+                            continue
 
-                ext = image_url.split('.')[-1].split('?')[0]
-                if ext.lower() not in ['png', 'jpg', 'jpeg', 'gif', 'webp']:
-                    ext = 'png'
+                        async with session.get(image_url) as img_resp:
+                            if img_resp.status != 200:
+                                continue
+                            img_data = await img_resp.read()
 
-                file = discord.File(io.BytesIO(img_data), filename=f"nsfw_{attempt+1}.{ext}")
-                await interaction.followup.send(file=file)
-                await asyncio.sleep(0.3)
-        except Exception as e:
-            await interaction.followup.send(f"⚠️ Error on attempt {attempt+1}: {str(e)}", ephemeral=False)
+                        ext = image_url.split('.')[-1].split('?')[0]
+                        if ext.lower() not in ['png', 'jpg', 'jpeg', 'gif', 'webp']:
+                            ext = 'png'
+
+                        file = discord.File(io.BytesIO(img_data), filename=f"nsfw_{attempt+1}.{ext}")
+                        await interaction.followup.send(file=file)
+                        success = True
+                        break
+            except:
+                continue
+        if not success:
+            await interaction.followup.send(f"⚠️ Failed attempt {attempt+1}.", ephemeral=False)
+        await asyncio.sleep(0.3)
 
 bot.run(os.getenv("DISCORD_TOKEN"))
