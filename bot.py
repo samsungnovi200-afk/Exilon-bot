@@ -30,7 +30,6 @@ async def blacklist_check(interaction: discord.Interaction):
         return False
     return True
 
-# ---------- RAID TEXT (no invoker) ----------
 RAID_TEXT = (
     "# EXILON STRIKES AGAIN, SON 🏅\n"
     "**YOUR SERVER? RAIDED. YOUR IP? LOGGED. YOUR TEARS? DELICIOUS. #FAIRS**\n\n"
@@ -48,7 +47,6 @@ RAID_TEXT = (
     "_Powered by Exilon_"
 )
 
-# ---------- BLAME MESSAGE (no invoker) ----------
 def get_blame_message(member: discord.Member) -> str:
     return (
         f"# 💀💀💀 RAID DETECTED – YOU'VE BEEN SPOTTED 💀💀💀\n\n"
@@ -62,7 +60,6 @@ def get_blame_message(member: discord.Member) -> str:
         "🔗 COME RAID WITH US: https://discord.gg/BjtRhW6VHN"
     )
 
-# ---------- ADVERTISEMENT (no invoker) ----------
 AD_TEXT = (
     "# 🔥 JOIN EXILON – THE RAID COMMUNITY 🔥\n\n"
     "**Get your own FREE raid bot with:**\n"
@@ -78,7 +75,6 @@ AD_TEXT = (
 def generate_fake_ip():
     return f"{random.randint(1,255)}.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(1,255)}"
 
-# ---------- VIEWS ----------
 class RaidView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=300)
@@ -86,14 +82,43 @@ class RaidView(discord.ui.View):
     @discord.ui.button(label="RAID", style=discord.ButtonStyle.danger, custom_id="raid_button")
     async def raid_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(ephemeral=True)
+
+        is_dm = interaction.guild is None
+        can_send = True
+        can_mention_everyone = False
+
+        if not is_dm:
+            perms = interaction.channel.permissions_for(interaction.guild.me)
+            can_send = perms.send_messages
+            can_mention_everyone = perms.mention_everyone
+
+        if not can_send:
+            await interaction.followup.send("❌ I don't have permission to send messages in this channel.", ephemeral=True)
+            return
+
         for _ in range(5):
-            await interaction.channel.send(content="@everyone\n" + RAID_TEXT)
+            if is_dm:
+                await interaction.channel.send(RAID_TEXT)
+            else:
+                if can_mention_everyone:
+                    await interaction.channel.send(content="@everyone\n" + RAID_TEXT)
+                else:
+                    await interaction.channel.send(RAID_TEXT)
             await asyncio.sleep(0.4)
+
         await interaction.followup.send("✅ Sent 5 messages.", ephemeral=True)
 
     @discord.ui.button(label="EXTRA", style=discord.ButtonStyle.secondary, custom_id="extra_button")
     async def extra_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("🔧 Extra feature – coming soon.", ephemeral=True)
+        # Opens a new raid panel (same as /raid command)
+        embed = discord.Embed(
+            title="RAID EXTRA",
+            description="Click the **RAID** button to send 5 raid messages.\nClick **EXTRA** for additional options.",
+            color=discord.Color.red()
+        )
+        embed.set_footer(text="Only you can see this panel")
+        view = RaidView()
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 class NitroAcceptView(discord.ui.View):
     def __init__(self):
@@ -106,19 +131,17 @@ class NitroAcceptView(discord.ui.View):
             ephemeral=False
         )
 
-# ---------- BOT EVENT ----------
 @bot.event
 async def on_ready():
     await bot.tree.sync()
     print(f"Logged as {bot.user}")
 
-# ---------- FREE COMMANDS ----------
 @bot.tree.command(name="raid", description="[🆓] Open the ephemeral raid control panel")
 async def raid(interaction: discord.Interaction):
     if not await blacklist_check(interaction): return
     embed = discord.Embed(
         title="RAID EXTRA",
-        description="Click the **RAID** button to send 5 raid messages with @everyone ping.\nClick **EXTRA** for additional options.",
+        description="Click the **RAID** button to send 5 raid messages.\nClick **EXTRA** for additional options.",
         color=discord.Color.red()
     )
     embed.set_footer(text="Only you can see this panel")
@@ -129,7 +152,6 @@ async def raid(interaction: discord.Interaction):
 @app_commands.describe(user="The user you want to blame")
 async def blame(interaction: discord.Interaction, user: discord.Member):
     if not await blacklist_check(interaction): return
-    # Public message, but no invoker info
     await interaction.response.send_message(get_blame_message(user))
 
 @bot.tree.command(name="ip", description="[🆓] Display a SYSTEM INTRUSION alert (fake)")
@@ -183,7 +205,6 @@ async def checkraid(interaction: discord.Interaction):
     msg = await interaction.original_response()
     await asyncio.sleep(1)
     await msg.delete()
-    # Confirm to the invoker only (ephemeral)
     await interaction.followup.send("✅ Checkraid executed.", ephemeral=True)
 
 @bot.tree.command(name="ad", description="[🆓] Show the Exilon Discord server advertisement")
@@ -191,7 +212,6 @@ async def ad(interaction: discord.Interaction):
     if not await blacklist_check(interaction): return
     await interaction.response.send_message(AD_TEXT)
 
-# ---------- PREMIUM MANAGEMENT (owner only, public but no invoker mention) ----------
 @bot.tree.command(name="addpremium", description="[🔒] Grant premium access (owner only)")
 @app_commands.describe(user="The user to grant premium access")
 async def addpremium(interaction: discord.Interaction, user: discord.Member):
@@ -216,7 +236,6 @@ async def removepremium(interaction: discord.Interaction, user: discord.Member):
     PREMIUM_USERS.remove(user.id)
     await interaction.response.send_message(f"{user.mention} [💎] You have lost premium command privileges.", ephemeral=False)
 
-# ---------- BLACKLIST COMMANDS (owner only) ----------
 @bot.tree.command(name="blacklist", description="[🔒] Blacklist a user (owner only)")
 @app_commands.describe(user="The user to blacklist")
 async def blacklist(interaction: discord.Interaction, user: discord.Member):
@@ -241,7 +260,6 @@ async def unblacklist(interaction: discord.Interaction, user: discord.Member):
     BLACKLIST.remove(user.id)
     await interaction.response.send_message(f"{user.mention} has been unblacklisted.", ephemeral=False)
 
-# ---------- PREMIUM COMMANDS ----------
 @bot.tree.command(name="spam", description="[💎] Send a custom message multiple times (premium only)")
 @app_commands.describe(message="The message to send", total="Number of times to send (max 5)")
 async def spam(interaction: discord.Interaction, message: str, total: int):
@@ -296,5 +314,4 @@ async def nsfw(interaction: discord.Interaction):
         except Exception as e:
             await interaction.followup.send(f"⚠️ Error on attempt {attempt+1}: {str(e)}", ephemeral=False)
 
-# ---------- RUN BOT ----------
 bot.run(os.getenv("DISCORD_TOKEN"))
